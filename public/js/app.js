@@ -205,15 +205,21 @@ window.habitrpg = angular.module('habitrpg',
           return response;
         }
         function error(response) {
-          //var status = response.status;
-          response.data = (response.data.err) ? response.data.err : response.data;
-          if (response.status == 0) response.data = window.env.t('serverUnreach');
-          if (response.status == 500) response.data += window.env.t('seeConsole');
-
-          var error = response.status == 0 ? response.data : (window.env.t('error') + ' ' + response.status + ': ' + response.data);
-          $rootScope.$broadcast('responseError', error);
-          console.log(arguments);
-          return $q.reject(response);
+          if (response.status == 0 || response.status == 404) {
+            $rootScope.$broadcast('responseText', window.env.t('serverUnreach'));
+          } else if (response.needRefresh) {
+            $rootScope.$broadcast('responseError', "The site has been updated and the page needs to refresh. The last action has not been recorded, please refresh and try again.");
+          } else if (response < 500) {
+            $rootScope.$broadcast('responseText', response.data.err || response.data);
+          } else {
+            var error = '<strong>Please reload</strong>, ' +
+              '"'+window.env.t('error')+' '+(response.data.err || response.data || 'something went wrong')+'"' +
+              window.env.t('seeConsole');
+            $rootScope.$broadcast('responseError', error);
+            console.error(response);
+          }
+          //return $q.reject(response); // this completely halts app usability, meaning we can't queue offline actions
+          return response;
         }
         return function (promise) {
           return promise.then(success, error);
